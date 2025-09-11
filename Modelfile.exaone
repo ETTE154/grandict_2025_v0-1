@@ -1,0 +1,9 @@
+# Example Modelfile to load EXAONE 4.0 32B GGUF into Ollama.
+# Adjust the tag/path to a specific quant you have (e.g., Q4_K_M).
+
+FROM hf.co/LGAI-EXAONE/EXAONE-4.0-32B-GGUF
+
+PARAMETER temperature 0.1
+PARAMETER num_ctx 4096
+
+# You can add system prompt here too, but we set it in app config.
