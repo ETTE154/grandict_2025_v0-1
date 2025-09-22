@@ -4,7 +4,12 @@ from langchain_core.tools import Tool
 from .robot import RobotClient
 
 
-def build_tools(robot: RobotClient, action_name_follow: str, action_name_block: str) -> List[Tool]:
+def build_tools(
+    robot: RobotClient,
+    action_name_follow: str,
+    action_name_block: str,
+    action_name_research: str,
+) -> List[Tool]:
     def t_follow(**kwargs) -> str:
         try:
             if kwargs:
@@ -31,6 +36,19 @@ def build_tools(robot: RobotClient, action_name_follow: str, action_name_block: 
             print(f"[TOOL][error] {e}")
             return f"ERROR: {e}"
 
+    def t_research(**kwargs) -> str:
+        try:
+            if kwargs:
+                print(f"[TOOL] invoke: {action_name_research} args={kwargs}")
+            else:
+                print(f"[TOOL] invoke: {action_name_research}")
+            robot.send(action_name_research)
+            return "OK"
+        except Exception as e:
+            # Avoid crashing the chat flow if robot connection fails
+            print(f"[TOOL][error] {e}")
+            return f"ERROR: {e}"
+
     # Some models (e.g., gpt-oss) emit a generic tool call named "tool_use"
     # with structured args like {"name": "따라가라", "arguments": {...}}.
     # Provide a dispatcher tool to handle that pattern.
@@ -45,6 +63,10 @@ def build_tools(robot: RobotClient, action_name_follow: str, action_name_block: 
             if any(k in norm for k in ["막", "block"]):
                 print(f"[TOOL] dispatch(tool_use) -> {action_name_block}")
                 robot.send(action_name_block)
+                return "OK"
+            if any(k in norm for k in ["탐색", "수색", "research", "scan", "explore"]):
+                print(f"[TOOL] dispatch(tool_use) -> {action_name_research}")
+                robot.send(action_name_research)
                 return "OK"
             msg = f"Unknown tool name: {name}"
             print(f"[TOOL][warn] {msg}")
@@ -71,6 +93,15 @@ def build_tools(robot: RobotClient, action_name_follow: str, action_name_block: 
         func=t_block,
     )
 
+    research_tool = Tool.from_function(
+        name=action_name_research,
+        description=(
+            "Go2 로봇이 주변을 탐색(research/scan)하도록 실행한다. 인자 없음. 사용자가 '탐색해', '수색해', 'research' 등 "
+            "유사 표현을 하면 이 도구를 호출하라."
+        ),
+        func=t_research,
+    )
+
     tool_use = Tool.from_function(
         name="tool_use",
         description=(
@@ -80,4 +111,4 @@ def build_tools(robot: RobotClient, action_name_follow: str, action_name_block: 
         func=t_tool_use,
     )
 
-    return [follow_tool, block_tool, tool_use]
+    return [follow_tool, block_tool, research_tool, tool_use]

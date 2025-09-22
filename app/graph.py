@@ -41,7 +41,10 @@ class GraphManager:
 
         # Tools
         self.tools = build_tools(
-            self.robot, settings.action_name_follow, settings.action_name_block
+            self.robot,
+            settings.action_name_follow,
+            settings.action_name_block,
+            settings.action_name_research,
         )
 
         # Model
@@ -135,12 +138,13 @@ class GraphManager:
                     return say
                 return last_ai.content or ""
 
-        # 2) Fallback: if the model emitted only a tool call with no text, return latest tool result
+        # 2) Fallback: if the model emitted only a tool call with no text,
+        #    do not surface raw tool output (no robot-side feedback). Show a generic ack unless error.
         for m in reversed(new_msgs):
             if isinstance(m, ToolMessage):
                 tool_text = (m.content or "").strip()
                 if tool_text:
-                    return tool_text
+                    return tool_text if tool_text.startswith("ERROR") else "명령을 전송했습니다."
 
         # 3) Default: return assistant content or empty
         return (last_ai.content or "").strip() if last_ai else ""
@@ -196,6 +200,10 @@ class GraphManager:
                 print("[CMD] execute: block")
                 self.robot.send(self.settings.action_name_block)
                 return "앞을 가로막겠습니다."
+            if norm in ("research", "탐색", "탐색해", "수색", "수색해", "scan", "explore"):
+                print("[CMD] execute: research")
+                self.robot.send(self.settings.action_name_research)
+                return "주변을 탐색하겠습니다."
             if norm == "none":
                 print("[CMD] no-op")
                 return None
